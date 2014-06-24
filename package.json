@@ -6,7 +6,7 @@
     "title": "node-webkit demo",
     "toolbar": true,
     "frame": true,
-    "width": 600,
+    "width": 800,
     "height": 560,
     "position": "mouse",
     "resizable": true
