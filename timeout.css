@@ -1,0 +1,37 @@
+html, body {
+  height: 100%;
+}
+
+.bg-grey {
+  background: grey;
+}
+
+.bg-default {
+  background: #ffffff;
+}
+
+.content-wrapper {
+  min-height: 100%;
+}
+
+.content {
+  overflow: auto;
+  padding-bottom: 50px;
+  width: 600px;
+  margin: 0 auto;
+}
+
+.break-left {
+  /*display: none;*/
+}
+
+.footer {
+  position: relative;
+  margin-top: -50px;
+  height: 50px;
+}
+
+.is-center {
+  text-align: center;
+}
+

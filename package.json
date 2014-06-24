@@ -1,0 +1,14 @@
+{
+  "name": "Take Some Rest",
+  "main": "index.html",
+  "version": "1.0.0",
+  "window": {
+    "title": "node-webkit demo",
+    "toolbar": true,
+    "frame": true,
+    "width": 600,
+    "height": 560,
+    "position": "mouse",
+    "resizable": true
+  }
+}

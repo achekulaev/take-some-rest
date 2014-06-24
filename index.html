@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="timeout.css">
+    <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet" media="screen">
+    <title>Take Some Rest</title>
+  </head>
+  <body>
+
+  <script src="jquery-1.11.0.min.js"></script>
+  <script src="bootstrap/js/bootstrap.min.js"></script>
+  <script src="underscore-min.js"></script>
+  <script src="backbone-min.js"></script>
+  <script src="timeout.js"></script>
+
+  <div class="content-wrapper">
+    <div class="content">
+      <form id="settings-timer-1" class="pure-form timer-frontend">
+        <fieldset>
+          <label>Work for</label>
+          <input type="number" min="2" max="900" value="10" class="work-delay">
+          <span class="after-input">seconds</span>
+          <div></div>
+          <label>Break for</label>
+          <input type="number" min="10" max="30" value="5" class="break-delay">
+          <span class="after-input">seconds</span>
+
+          <div class="work-time-left">00:00:00</div>
+          <div class="break-time-left">00:00:00</div>
+          <input type="button" class="pure-button settings-update" value="Update">
+          <!--<input type="button" class="pure-button timer-stop" value="Stop">-->
+        </fieldset>
+      </form>
+    </div>
+  </div>
+
+  <div class="footer l-box is-center">
+    Built using node.js <script>document.write(process.version)</script>.
+  </div>
+
+  <script>
+    Timers.add(jQuery('#settings-timer-1'));
+
+    var gui = require('nw.gui');
+    var tray = new gui.Tray({ icon: 'icon.png' });
+
+    var menu = new gui.Menu();
+    menu.append(
+      new gui.MenuItem({
+        label: 'Quit',
+        click: function() {
+          gui.App.quit();
+        }
+      })
+    );
+    tray.menu = menu;
+  </script>
+
+  </body>
+</html>
