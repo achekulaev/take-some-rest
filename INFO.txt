@@ -1,1 +1,2 @@
 shell abspath mac os http://stackoverflow.com/questions/5756524/how-to-get-absolute-path-name-of-shell-script-on-macos
+Progress bar http://css-tricks.com/html5-progress-element/

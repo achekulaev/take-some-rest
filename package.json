@@ -1,5 +1,5 @@
 {
-  "name": "Take Some Rest",
+  "name": "TakeSomeRest",
   "main": "index.html",
   "version": "1.0.0",
   "window": {
@@ -8,7 +8,8 @@
     "frame": true,
     "width": 800,
     "height": 560,
-    "position": "mouse",
-    "resizable": true
+    "position": 0,
+    "resizable": true,
+    "always-on-top": false
   }
 }

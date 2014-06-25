@@ -2,8 +2,8 @@
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="pure.css">
     <link rel="stylesheet" href="timeout.css">
+
     <title>Take Some Rest</title>
   </head>
   <body>
@@ -13,26 +13,44 @@
   <script src="backbone-min.js"></script>
   <script src="timeout.js"></script>
 
-  <div class="pure-g-r">
-    <div class="pure-u-1-3">
-      <form id="settings-timer-1" class="pure-form timer-frontend">
+  <datalist id="work-delay-options">
+    <select>
+      <option value="5" />
+      <option value="10" />
+      <option value="15" />
+      <option value="20" />
+      <option value="25" />
+      <option value="30" />
+      <option value="35" />
+      <option value="40" />
+      <option value="45" />
+      <option value="50" />
+      <option value="55" />
+      <option value="60" />
+    </select>
+  </datalist>
+
+  <div class="content-wrapper">
+    <div>
+      <form id="settings-timer-1" class="timer-frontend">
         <fieldset>
+          <legend>Short rest</legend>
           <label>Work for</label>
           <input type="number" min="2" max="900" value="10" class="work-delay">
           <span class="after-input">seconds</span>
-          <div></div>
-          <label>Break for</label>
+          <label>and then break for</label>
           <input type="number" min="10" max="30" value="5" class="break-delay">
           <span class="after-input">seconds</span>
+          <input type="button" class="settings-update" value="Set">
+          <progress value="0" max="100"></progress>
 
-          <div class="work-time-left">00:00:00</div>
-          <div class="break-time-left">00:00:00</div>
-          <input type="button" class="pure-button settings-update" value="Update">
+          <div class="relative tilt-up align-right"><span class="em">Break in </span><span class="work-time-left">00:00:00</span></div>
+          <div class="relative tilt-up align-right"><span class="em">Break ends in </span><span class="break-time-left">00:00:00</span></div>
           <!--<input type="button" class="pure-button timer-stop" value="Stop">-->
         </fieldset>
       </form>
     </div>
-    <div class="pure-u-1 is-center">
+    <div class="is-center">
       Built using node.js <script>document.write(process.version)</script>.
     </div>
   </div>
@@ -53,6 +71,18 @@
       })
     );
     tray.menu = menu;
+
+    //
+
+
+    var afk = require('afk');
+
+    var seconds = 3;
+
+    var listenerId = afk.addListener(seconds, function(e) {
+      console.log(e)
+//      afk.removeListener(e.id);
+    })
   </script>
 
   </body>

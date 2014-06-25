@@ -132,6 +132,7 @@ var TimerFrontend = function(DOM) {
     this.elements.breakTimeLeft = $('.break-time-left', this.dom);
     this.elements.workDelay     = $('.work-delay', this.dom);
     this.elements.breakDelay    = $('.break-delay', this.dom);
+    this.elements.progress      = $('progress', this.dom);
 
     var _this = this;
 
@@ -157,6 +158,7 @@ var TimerFrontend = function(DOM) {
    */
   this.setWorkTimeLeftCounter = function(backEnd) {
     this.elements.workTimeLeft.text((backEnd.timeLeft/1000).toTimeString());
+    this.elements.progress.attr('value', Math.round((backEnd.timeLeft/this.workDelay)*100) );
   };
 
   /**
@@ -165,6 +167,7 @@ var TimerFrontend = function(DOM) {
    */
   this.setBreakTimeLeftCounter = function(backEnd) {
     this.elements.breakTimeLeft.text((backEnd.timeLeft/1000).toTimeString());
+    this.elements.progress.attr('value', Math.round((backEnd.timeLeft/this.breakDelay)*100) );
   };
 
   /**
@@ -177,6 +180,7 @@ var TimerFrontend = function(DOM) {
     NWWindow.focus();
     this.setBreakStyle();
     this.breakBackEnd.set(this.breakDelay);
+    this.trigger("timer:set", this.breakBackEnd);
   };
 
   /**
@@ -188,6 +192,7 @@ var TimerFrontend = function(DOM) {
     Sounds.playSound(0);
     this.setDefaultStyle();
     this.workBackEnd.set(this.workDelay);
+    this.trigger("timer:set", this.workBackEnd);
   };
 
   /**

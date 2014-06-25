@@ -18,10 +18,10 @@ if [ "$PROCESS_SEARCH" == "" ]; then
   cd "$APP_DIR"
   rm "$OUT_FILENAME"
   if [ $1 == "-b" ]; then
-    zip -r "$OUT_FILENAME" *.html *.js *.css icon.png package.json Sounds bootstrap
+    zip -r "$OUT_FILENAME" *.html *.js *.css icon.png package.json Sounds node_modules
   else
     clear
-    zip -r "$OUT_FILENAME" *.html *.js *.css icon.png package.json Sounds bootstrap & "$NW_PATH" "$APP_DIR/$OUT_FILENAME" &
+    zip -r "$OUT_FILENAME" *.html *.js *.css icon.png package.json Sounds node_modules & "$NW_PATH" "$APP_DIR/$OUT_FILENAME" &
     sleep 2
   fi
 else
