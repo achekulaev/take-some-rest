@@ -30,13 +30,13 @@
     </select>
   </datalist>
 
-  <div class="content-wrapper">
+  <script type="text/template" id="timer-template">
     <div>
-      <form id="settings-timer-1" class="timer-frontend">
+      <form id="timer-<%= id %>" class="timer-frontend">
         <fieldset>
-          <legend>Short rest</legend>
+          <legend><%- title %></legend>
           <label>Work for</label>
-          <input type="number" min="2" max="900" value="10" class="work-delay">
+          <input type="number" min="2" max="900" value="55" class="work-delay">
           <span class="after-input">seconds</span>
           <label>and then break for</label>
           <input type="number" min="10" max="30" value="5" class="break-delay">
@@ -46,20 +46,29 @@
 
           <div class="relative tilt-up align-right"><span class="em">Break in </span><span class="work-time-left">00:00:00</span></div>
           <div class="relative tilt-up align-right"><span class="em">Break ends in </span><span class="break-time-left">00:00:00</span></div>
-          <!--<input type="button" class="pure-button timer-stop" value="Stop">-->
+          <!--<input type="button" class="timer-stop" value="Stop">-->
         </fieldset>
       </form>
     </div>
-    <div class="is-center">
-      Built using node.js <script>document.write(process.version)</script>.
-    </div>
+  </script>
+
+  <div id="content-wrapper">
+  </div>
+
+  <div>
+    <input type="button" value="Add timer" onclick="Timers.add()">
+    <input type="button" value="Quit" onclick="quit()">
   </div>
 
   <script>
-    Timers.add(jQuery('#settings-timer-1'));
+    Timers.add();
 
     var gui = require('nw.gui');
     var tray = new gui.Tray({ icon: 'icon.png' });
+
+    function quit() {
+      gui.App.quit();
+    }
 
     var menu = new gui.Menu();
     menu.append(
@@ -80,9 +89,11 @@
     var seconds = 3;
 
     var listenerId = afk.addListener(seconds, function(e) {
-      console.log(e)
+      Timers.setAFKState(e.status == 'away');
 //      afk.removeListener(e.id);
-    })
+    });
+    console.log(listenerId);
+
   </script>
 
   </body>

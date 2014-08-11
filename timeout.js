@@ -7,10 +7,29 @@
 var $ = jQuery;
 var NWGui = require('nw.gui');
 var NWWindow = NWGui.Window.get();
+
 var NWFS = require('fs');
 
 var OPTIONS_FILE_PATH = '~/.nw-timer/config.ini';
 var SOUNDS_PATH = 'Sounds';
+
+/**
+ * An object to exchange events between objects
+ * @type {{}}
+ */
+var GlobalEvent = {};
+_.extend(GlobalEvent, Backbone.Events);
+
+var Metronome = {
+  init: setTimeout(function() {
+    _.extend(Metronome, Backbone.Events);
+    setInterval(function() { Metronome.tick() }, 1000);
+  }, 50),
+
+  tick: function() {
+    GlobalEvent.trigger('metronome:tick');
+  }
+};
 
 /**
  * Handles
@@ -25,34 +44,28 @@ var SOUNDS_PATH = 'Sounds';
  */
 var TimerBackend = function() {
 
-  this.id = +(_.uniqueId());
-
   this.tickInterval = null;
+  this.paused = false;
+  this.timeLength = 0; // initial time set to count down
   this.timeLeft = 0;
   this.tickLength = 1000; //milliseconds; timer granularity
 
   this.init = function() {
     _.extend(this, Backbone.Events);
-//    this.off();
-    this.on('timer:tick', this.tick, this);
     this.on('timer:stop', this.stop, this);
-    this.on('timer:done', this.stop, this);
   };
-
   /* --================-- */
-
   /**
    * Triggers
    *  timer:set
-   *  timer:tick
    * @param delay
    */
   this.set = function(delay) {
     var _timer = this;
     this.stop();
-    this.timeLeft = delay;
+    this.timeLength = this.timeLeft = delay;
     this.tickInterval = setInterval(function() {
-      _timer.trigger('timer:tick', _timer);
+      _timer.tick();
     }, this.tickLength);
     this.trigger('timer:set', this);
   };
@@ -60,27 +73,49 @@ var TimerBackend = function() {
   /**
    * Triggers
    *  timer:done
+   *  timer:tick
    * @param onTick
    */
   this.tick = function() {
-    if (this.timeLeft > this.tickLength) {
+    if (this.paused) {
+      return;
+    }
+    if (this.timeLeft > 0) {
       this.timeLeft -= this.tickLength;
-    } else {
+    }
+    if (this.timeLeft <= 0) {
+      this.stop();
+      console.log('Trigger: done')
       this.trigger('timer:done', this);
+    } else {
+      this.trigger('timer:tick', this);
     }
   };
 
   /**
    * Stops timer
    * Handles
-   *  timer:done
    *  timer:stop
    */
   this.stop = function() {
     clearInterval(this.tickInterval);
     this.timeLeft = 0;
+    this.paused = false;
   };
 
+  /**
+   * Pauses timer
+   */
+  this.pause = function() {
+    this.paused = true;
+  };
+
+  /**
+   * Resumes timer
+   */
+  this.resume = function() {
+    this.paused = false;
+  };
   /* --================-- */
   this.init();
 };
@@ -99,7 +134,6 @@ var TimerBackend = function() {
  *  form:update
  *  form:error
  *  settings:update
- * @param workBackEnd
  * @param DOM
  * @constructor
  */
@@ -115,40 +149,42 @@ var TimerFrontend = function(DOM) {
    */
   this.init = function() {
     _.extend(this, Backbone.Events);
+    var _this = this;
     // handle timer events
     this.workBackEnd.on('timer:set timer:tick', this.setWorkTimeLeftCounter, this);
     this.workBackEnd.on('timer:done', this.setWorkTimerDone, this);
     this.workBackEnd.on('timer:stop', this.setWorkTimerStop, this);
+    GlobalEvent.on('user:away', function() { console.log('pause'); _this.workBackEnd.pause(); });
+    GlobalEvent.on('user:back', function() { _this.workBackEnd.resume(); });
     this.breakBackEnd.on('timer:set timer:tick', this.setBreakTimeLeftCounter, this);
     this.breakBackEnd.on('timer:done', this.setBreakTimerDone, this);
     this.breakBackEnd.on('timer:stop', this.setBreakTimerStop, this);
-    // handle own events
-    this.on('form:update', this.setFormUpdate);
-    this.on('form:error', this.setFormError);
 
+    // handle own events
+//    this.on('form:update', this.setFormUpdate);
+    this.on('form:error', this.setFormError);
     // Get visual elements' references
     this.elements.body          = $('body');
     this.elements.workTimeLeft  = $('.work-time-left', this.dom);
     this.elements.breakTimeLeft = $('.break-time-left', this.dom);
     this.elements.workDelay     = $('.work-delay', this.dom);
     this.elements.breakDelay    = $('.break-delay', this.dom);
-    this.elements.progress      = $('progress', this.dom);
 
-    var _this = this;
+    this.elements.progress      = $('progress', this.dom);
 
     //--- Set visual elements handlers
     // Update button click
     // Triggers
     //  form:update
     $('.settings-update', this.dom).click(function() {
-      _this.trigger('form:update');
+      _this.setFormUpdate();
     });
 
-//    // Stop button click handler
-//    $('.timer-stop', this.dom).click(function() {
-//      _this.workBackEnd.trigger('timer:stop');
-//      _this.breakBackEnd.trigger('timer:stop');
-//    });
+    // Stop button click handler
+    $('.timer-stop', this.dom).click(function() {
+      _this.workBackEnd.trigger('timer:stop');
+      _this.breakBackEnd.trigger('timer:stop');
+    });
 
   };
 
@@ -158,7 +194,8 @@ var TimerFrontend = function(DOM) {
    */
   this.setWorkTimeLeftCounter = function(backEnd) {
     this.elements.workTimeLeft.text((backEnd.timeLeft/1000).toTimeString());
-    this.elements.progress.attr('value', Math.round((backEnd.timeLeft/this.workDelay)*100) );
+    this.setProgress(Math.round((backEnd.timeLeft/this.workDelay)*100));
+//    console.log('Handle: tick ' + backEnd.timeLeft);
   };
 
   /**
@@ -167,7 +204,7 @@ var TimerFrontend = function(DOM) {
    */
   this.setBreakTimeLeftCounter = function(backEnd) {
     this.elements.breakTimeLeft.text((backEnd.timeLeft/1000).toTimeString());
-    this.elements.progress.attr('value', Math.round((backEnd.timeLeft/this.breakDelay)*100) );
+    this.setProgress(Math.round((backEnd.timeLeft/this.breakDelay)*100));
   };
 
   /**
@@ -179,8 +216,11 @@ var TimerFrontend = function(DOM) {
     NWWindow.show();
     NWWindow.focus();
     this.setBreakStyle();
+    this.elements.workTimeLeft.text((0).toTimeString());
+
     this.breakBackEnd.set(this.breakDelay);
-    this.trigger("timer:set", this.breakBackEnd);
+    this.setProgress(100);
+    console.log('Handle: done')
   };
 
   /**
@@ -191,8 +231,10 @@ var TimerFrontend = function(DOM) {
   this.setBreakTimerDone = function() {
     Sounds.playSound(0);
     this.setDefaultStyle();
+    this.elements.breakTimeLeft.text((0).toTimeString());
+
     this.workBackEnd.set(this.workDelay);
-    this.trigger("timer:set", this.workBackEnd);
+    this.setProgress(100);
   };
 
   /**
@@ -235,7 +277,7 @@ var TimerFrontend = function(DOM) {
     if (isValid) {
       this.workDelay = workDelay;
       this.breakDelay = breakDelay;
-      this.trigger('settings:update', workDelay, breakDelay);
+//      this.trigger('settings:update', workDelay, breakDelay);
     }
 
     return isValid;
@@ -279,6 +321,10 @@ var TimerFrontend = function(DOM) {
     this.elements.body.removeClass('bg-grey');
   };
 
+  this.setProgress = function(value) {
+    this.elements.progress.attr('value', value );
+  };
+
   /* --================-- */
   this.init();
 };
@@ -292,9 +338,16 @@ var TimerFrontend = function(DOM) {
 var Timers = {
   list: [],
 
+  init: function() {
+    _.extend(this, Backbone.Events);
+  },
+
   add: function(element) {
-    this.list.push(new TimerFrontend(element));
-    _.last(this.list).on('settings:update', this.save, this);
+    var uid = _.uniqueId();
+    var t = _.template($('#timer-template').html());
+    var wrapper = $('#content-wrapper').append(t({ title: 'New timer', id : uid }));
+    this.list.push(new TimerFrontend(wrapper.find('#timer-' + uid)));
+//    _.last(this.list).on('settings:update', this.save, this);
   },
 
   save: function(workDelay, breakDelay) {
@@ -303,9 +356,16 @@ var Timers = {
     NWFS.writeFile(OPTIONS_FILE_PATH, content);
   },
 
+  setAFKState: function(isAway) {
+    GlobalEvent.trigger(isAway ? 'user:away' : 'user:back');
+  },
+
   restore: function() {
 
-  }
+  },
+
+  //-------========--------//
+  __: setTimeout(function() { Timers.init(); }, 50)
 };
 
 /**
@@ -346,7 +406,7 @@ var Sounds = {
     this.set(id);
     this.play();
   }
-}
+};
 Sounds.init();
 
 /* ---=======≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡=======--- */
@@ -361,7 +421,7 @@ Number.prototype.toTimeString = function() {
   var minutes = Math.floor(_$ / 60);
   var seconds = Math.floor(_$ % 60);
   return hours.leadZero() + ':' + minutes.leadZero() + ':' + seconds.leadZero();
-}
+};
 
 /**
  * 01..09, 10, 11...
@@ -369,9 +429,9 @@ Number.prototype.toTimeString = function() {
  */
 Number.prototype.leadZero = function() {
   return this > 9 ? String(this) : '0' + this;
-}
+};
 
 String.prototype.toInteger = function() {
   var i = parseInt(this);
   return isNaN(i) ? 0 : i;
-}
+};

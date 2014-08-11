@@ -10,6 +10,8 @@
     "height": 560,
     "position": 0,
     "resizable": true,
-    "always-on-top": false
+    "always-on-top": true,
+    "kiosk": false,
+    "transparent": true
   }
 }
