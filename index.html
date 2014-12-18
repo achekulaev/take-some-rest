@@ -1,100 +1,424 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="timeout.css">
-
-    <title>Take Some Rest</title>
-  </head>
-  <body>
-
-  <script src="jquery-1.11.0.min.js"></script>
-  <script src="underscore-min.js"></script>
-  <script src="backbone-min.js"></script>
-  <script src="timeout.js"></script>
-
-  <datalist id="work-delay-options">
-    <select>
-      <option value="5" />
-      <option value="10" />
-      <option value="15" />
-      <option value="20" />
-      <option value="25" />
-      <option value="30" />
-      <option value="35" />
-      <option value="40" />
-      <option value="45" />
-      <option value="50" />
-      <option value="55" />
-      <option value="60" />
-    </select>
-  </datalist>
-
-  <script type="text/template" id="timer-template">
-    <div>
-      <form id="timer-<%= id %>" class="timer-frontend">
-        <fieldset>
-          <legend><%- title %></legend>
-          <label>Work for</label>
-          <input type="number" min="2" max="900" value="55" class="work-delay">
-          <span class="after-input">seconds</span>
-          <label>and then break for</label>
-          <input type="number" min="10" max="30" value="5" class="break-delay">
-          <span class="after-input">seconds</span>
-          <input type="button" class="settings-update" value="Set">
-          <progress value="0" max="100"></progress>
-
-          <div class="relative tilt-up align-right"><span class="em">Break in </span><span class="work-time-left">00:00:00</span></div>
-          <div class="relative tilt-up align-right"><span class="em">Break ends in </span><span class="break-time-left">00:00:00</span></div>
-          <!--<input type="button" class="timer-stop" value="Stop">-->
-        </fieldset>
-      </form>
-    </div>
-  </script>
-
-  <div id="content-wrapper">
-  </div>
-
-  <div>
-    <input type="button" value="Add timer" onclick="Timers.add()">
-    <input type="button" value="Quit" onclick="quit()">
-  </div>
-
-  <script>
-    Timers.add();
-
-    var gui = require('nw.gui');
-    var tray = new gui.Tray({ icon: 'icon.png' });
-
-    function quit() {
-      gui.App.quit();
+<html ng-app="takeSomeRest">
+<head lang="en">
+  <meta charset="UTF-8">
+  <title>Take Some Rest</title>
+  <link rel="stylesheet" href="kendo.common.min.css" />
+  <link rel="stylesheet" href="kendo.silver.min.css" />
+  <link rel="stylesheet" href="bootstrap-3.2.0-dist/css/bootstrap.css">
+  <style>
+    body {
+      font-family: Helvetica Neue, Helvetica, Arial, sans-serif;
+      background: -webkit-gradient(linear, left top, left bottom, color-stop(0%,#d0d0d0), color-stop(100%,#e6e6e6));
+      min-height: 560px;
+    }
+    .break {
+      /*background: grey;*/
+    }
+    .timer {
+      margin-top: 15px;
     }
 
-    var menu = new gui.Menu();
-    menu.append(
-      new gui.MenuItem({
-        label: 'Quit',
-        click: function() {
-          gui.App.quit();
+    .timer:nth-child(1) {
+      margin-top: 0;
+    }
+    input.timerName {
+      background: transparent;
+      padding-left: 0;
+      margin-left: -1px;
+      border: 1px transparent;
+      border-bottom: 1px dotted silver;
+      cursor: pointer;
+      font-size: 20px;
+    }
+    span, input {
+      vertical-align: middle;
+    }
+    .editableText {
+      border-bottom: 1px dotted dimgrey;
+      color: dimgrey;
+      cursor: pointer;
+    }
+    .editableText:hover {
+      color: #3487c3;
+    }
+
+    .slider {
+      width: 550px
+    }
+
+    .panel-default {
+      width: 800px;
+      margin: 20px auto;
+    }
+
+    button span {
+      vertical-align: middle;
+    }
+  </style>
+</head>
+<body ng-controller="myTimer" ng-class="{break: !isWork}">
+
+<div class="panel panel-default">
+  <div class="panel-body">
+    <div ng-repeat="t in timers" ng-mouseleave="t.editWork = false; t.editBreak = false; saveSettings()" style="position: relative" class="timer">
+      <input type="text" ng-model="t.name" class="timerName" /><br/>
+      <span>Work for </span>
+        <span ng-bind="t.work" ng-click="t.editWork = true; t.editBreak = false" class="editableText"></span>
+        <div style="background: #ffffff; position: absolute; top: 50px; left:0; z-index: 5; border: 1px solid silver; border-radius: 2px; width: 600px; height: 50px; padding: 5px 0 0 10px" ng-show="t.editWork">
+          <div kendo-slider
+             k-min="15" k-max="120"
+             k-ng-model="t.work"
+             k-show-buttons="false" k-small-step="5" k-large-step="15" k-tooltip="{ enabled : false }" class="slider"></div>
+        </div>
+      <span> minutes</span>
+      <span>then break for </span>
+      <span ng-bind="t.break" ng-click="t.editBreak = true; t.editWork = false" class="editableText"></span>
+      <div style="background: #ffffff; position: absolute; top: 50px; left:0; z-index: 5; border: 1px solid silver; border-radius: 2px; width: 600px; height: 50px; padding: 5px 0 0 10px" ng-show="t.editBreak">
+        <div kendo-slider
+             k-min="0" k-max="30"
+             k-ng-model="t.break"
+             k-show-buttons="false" k-small-step="0.5" k-large-step="2.5" k-tooltip="{ enabled : false }" class="slider"></div>
+      </div>
+      <span> minutes</span>
+      <button type="button" class="btn btn-default btn-xs" ng-click="t.isWork ? t.workLeft = 5 : t.breakLeft = 5" title="Fast forward">
+        <span class="glyphicon glyphicon-fast-forward" aria-hidden="true" style="vertical-align: baseline"></span> <span>Rewind</span>
+      </button>
+      <button type="button" class="btn btn-danger btn-xs" ng-click="removeTimer($index)" title="Remove timer">
+        <span class="glyphicon glyphicon-minus" aria-hidden="true" style="vertical-align: baseline"></span>
+      </button>
+
+      <div class="progress" style="margin-top: 10px">
+        <div
+          ng-style="{color: getProgress(t) > 2 ? '' : 'black', width: getProgress(t)+'%'}"
+          ng-class="['progress-bar', t.isWork ? 'progress-bar-success' : '']" role="progress-bar">
+          {{formatClock(getTimeLeft(t, t.isWork ? 'work' : 'break'))}}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel-footer">
+    <button type="button" class="btn btn-success" ng-disabled="timers.length > 9" ng-click="addTimer()">
+      <span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> <span>Add timer</span>
+    </button>
+    <button type="button" class="btn btn-primary" ng-click="saveSettings()">
+      <span class="glyphicon glyphicon-floppy-save" aria-hidden="true"></span> <span>Save settings</span>
+    </button>
+    <button type="button" class="btn btn-danger"  ng-show="!appActive" ng-click="startTimers()">
+      <span class="glyphicon glyphicon-circle-arrow-right" aria-hidden="true"></span> <span>Start work</span>
+    </button>
+    <!--<input type="button" class="btn btn-success" value="Add timer" ng-disabled="timers.length > 9" data-ng-click="addTimer()" />-->
+    <!--<input type="button" class="btn btn-primary" value="Save settings" ng-click="saveSettings()" />-->
+    <!--<input type="button" class="btn btn-danger" value="Start timers" ng-show="!appActive" ng-click="startTimers()" />-->
+  </div>
+</div>
+
+<script type="text/ng-template" id="myModalContent.html">
+  <div class="panel-body">
+    <h1 style="margin-top: 0; text-align: center">It's time to break</h1>
+    <div>Click Okay or just don't touch anything and leave your desk to start a break.</div>
+    <div>Hit Escape or click Postpone to work a bit more.</div>
+    <div>Auto-postpone in <span ng-bind="autoPostponeTimer/1000"></span> seconds</div>
+    <button class="btn btn-primary" ng-click="takeBreak()">Okay, okay...</button>
+    <button class="btn btn-primary btn-warning" ng-click="postpone()">Postpone 1 min (ESC)</button>
+  </div>
+</script>
+
+
+<script src="jquery-1.11.0.min.js"></script>
+<script src="angular-1.3.0-beta.18/angular.min.js"></script>
+<script src="ui-bootstrap-tpls-0.11.0.js"></script>
+<script src="kendo.all.min.js"></script>
+<script src="angular-kendo.js"></script>
+
+<script>
+  //debug
+  var debug = (typeof require === 'undefined');
+  if (debug) {
+    require = function() {}
+  }
+
+  angular.module('takeSomeRest', ['kendo.directives', 'ui.bootstrap'])
+    .controller('myTimer', ['$scope', '$interval', '$modal', function ($scope, $interval, $modal) {
+      $scope.appGui = require('nw.gui');
+      $scope.appWindow = debug ? {} : $scope.appGui.Window.get();
+
+      $scope.isWork = true; // true when every timer is in isWork state
+      $scope.appActive = false;
+
+      $scope.loadSettings = function() {
+        // Load saved values if any
+        $scope.timers = angular.fromJson(localStorage.takeSomeRestTimers);
+        if (angular.isUndefined($scope.timers) || $scope.timers.length == 0 || $scope.timers[0].id != 0) {
+          // pre-fill if there is no saved timers
+          $scope.timers = [{ id : 0, name : "Main timer", work : 15, break : 5, isWork : true }];
+        } else {
+          $scope.timers.forEach(function(timer) {
+            timer.workLeft = timer.work*60;
+            timer.breakLeft = timer.break*60;
+            timer.isWork = true;
+            timer.progress = 100;
+          });
         }
-      })
-    );
-    tray.menu = menu;
+      };
 
-    //
+      $scope.loadSettings();
+
+      //-- Main tick interval
+      $interval(function() {
+        if ($scope.appActive) {
+          $scope.tick();
+        }
+      }, 1000);
+
+      //----------=============----------//
+
+      $scope.startTimers = function() {
+        $scope.saveSettings();
+        $scope.timers.forEach(function(t) {
+          t.workLeft = t.work * 60;
+          t.breakLeft = t.break * 60;
+        });
+        $scope.appActive = true;
+      };
+
+      $scope.tick = function() {
+        var newIsWorkValue = true; // it will become false if at least one timer is in break state
+
+        $scope.timers.forEach(function(timer) {
+          if (timer.isWork != $scope.isWork) {
+            return; // don't tick work timers when global state is break (!isWork)
+            // Note: there won't be a situation when timer state is break while global is work
+            //       thanks to newIsWorkValue if at least 1 timer is in break state then global is break
+          }
+
+          var stateName = (timer.isWork ? 'work' : 'break');
+          //workLeft and breakLeft counters
+          var counterName = stateName + 'Left';
+          timer[counterName]--; // tick appropriate counter
+          timer.progress = $scope.getProgress(timer);
+
+          if (timer[counterName] <= 0) {    // if counter is done then
+            timer.progress = 100;           // reset progress bar
+
+            if (timer.isWork) {             // in case of work end
+              $scope.appActive = false;     // pause app execution
+              $scope.modalPause(timer);     // show modal break request
+            } else {                        // else in case of break end just
+              timer.isWork = true;          // set timer state to work
+              timer['breakLeft'] = timer['break'] * 60; // reset break counter for future use
+            }
+          }
+
+          newIsWorkValue = newIsWorkValue && timer.isWork; // toggles global state value to false if timer is in break state
+        });
+
+        $scope.isWork = newIsWorkValue;
+      };
+
+      $scope.addTimer = function() {
+        $scope.timers.push({ id : 1, name : 'New timer', work : 15, break : 5, isWork : true });
+      };
+
+      $scope.removeTimer = function(index) {
+        $scope.timers.splice(index, 1);
+      };
+
+      $scope.getTimeLeft = function(timer, stateName) {
+        if ((stateName + 'Left' in timer) && $scope.appActive && (stateName == 'work' ? timer.isWork : !timer.isWork)) {
+          return parseInt(timer[stateName + 'Left']);
+        } else {
+          return 0;
+        }
+      };
+
+      // Formats seconds to digital clock hh:mm:ss
+      $scope.formatClock = function(seconds) {
+        if (seconds < 1) return '';
+        var min = 60;
+        var hour = min * 60;
+        var hours = Math.floor(seconds/hour);
+        var leftover = seconds - (hours * hour);
+        return (hours > 0 ? $scope.leadZero(hours) + ':' : '')
+          + $scope.leadZero(Math.floor(leftover/min)) + ':'
+          + $scope.leadZero(Math.floor(leftover%min));
+      };
+
+      $scope.leadZero = function(intVal) {
+        return intVal > 10 ? intVal : '0' + intVal;
+      };
+
+      $scope.getProgress = function(timer) {
+        var stateName = (timer.isWork ? 'work' : 'break');
+        return Math.round((timer[stateName + 'Left'] / (timer[stateName]*60)) * 100);
+      };
+
+      $scope.saveSettings = function() {
+        localStorage.takeSomeRestTimers = angular.toJson($scope.timers);
+      };
+
+      // UI functions
+      $scope.modalPause = function(timer) {
+        var AUTO_POSTPONE_DELAY = 30000; //miliseconds
+
+        var modalInstance = $modal.open({
+          templateUrl: 'myModalContent.html',
+          controller: ModalInstanceCtrl,
+          resolve: {
+            autoPostponeTimer: function() {
+              return AUTO_POSTPONE_DELAY;
+            }
+          }
+        });
+        $scope.bringToFront();
+
+        modalInstance.result.then(function() {
+          //                                      If user takes break
+          timer.isWork = false;                   // set timer state to break
+          $scope.isWork = false;                  // set App state to break
+          timer['workLeft'] = timer['work'] * 60; // reset timer work counter
+          $scope.appActive = true;                // resume app execution
+        }, function() {
+          //                                      If user postpones dont change states
+          timer['workLeft'] = 60;                 // give him one more minute
+          $scope.appActive = true;                // resume app execution
+        });
+      };
+
+      $scope.bringToFront = function() {
+        $scope.appWindow.show();
+        $scope.appWindow.focus();
+      };
+
+    }]);
+
+  //-- Modal Controller
+  var ModalInstanceCtrl = ['$scope', '$modalInstance', 'autoPostponeTimer', function($scope, $modalInstance, autoPostponeTimer) {
+    $scope.autoPostponeTimer = autoPostponeTimer;
+
+    $scope.autoInterval = setInterval(function() {
+      $scope.autoPostponeTimer -= 1000;
+    }, 1000);
+
+    $scope.autoTimer = setTimeout(function() {
+      $scope.postpone();
+    }, $scope.autoPostponeTimer + 1000);
 
 
-    var afk = require('afk');
+    $scope.takeBreak = function() {
+      clearTimeout($scope.autoTimer);
+      clearInterval($scope.autoInterval)
+      $modalInstance.close();
+    };
+    $scope.postpone = function() {
+      clearTimeout($scope.autoTimer);
+      clearInterval($scope.autoInterval)
+      $modalInstance.dismiss('not just yet!');
+    }
+  }];
 
-    var seconds = 3;
 
-    var listenerId = afk.addListener(seconds, function(e) {
-      Timers.setAFKState(e.status == 'away');
+  jQuery(function() {
+    if (!debug) {
+      var angApp = angular.element(jQuery('body')).scope();
+      var gui = angApp.appGui;
+      var win = angApp.appWindow;
+
+      //-- Window
+      win.on('close', function(event) {
+        if (event == 'quit') { //Cmd-q pressed
+          gui.App.quit();
+        } else {
+          this.hide();
+        }
+      });
+
+      //-- Main menu
+      var mb = new gui.Menu({ type : "menubar" });
+      mb.createMacBuiltin("Take Some Rest");
+      win.menu = mb;
+
+      //-- Tray menu
+      var tray = new gui.Tray({ icon: 'alticon.png' });
+      tray.alticon = 'icon.png';
+
+      var menu = new gui.Menu();
+      var trayMenu = [
+        {
+          label: 'Take Some Rest',
+          click: function() { angApp.bringToFront(); }
+        },
+        { type: 'separator' },
+        {
+          label: 'Show',
+          click: function() { angApp.bringToFront(); }
+        },
+        {
+          label: 'Quit',
+          click: function() { gui.App.quit(); }
+        }
+      ];
+
+      for (var i = 0; i < trayMenu.length; i++) {
+        var item = trayMenu[i];
+        if (item.type == 'separator') {
+          menu.append(new gui.MenuItem({ type: 'separator' }));
+        } else {
+          menu.append(new gui.MenuItem({
+            label: item.label,
+            click: item.click
+          }));
+        }
+
+      }
+
+      tray.menu = menu;
+
+      //-- User activity handler
+      var afk = require('afk');
+      var seconds = 5;
+
+//      var listenerId = afk.addListener(seconds, function(e) {
+//        if (e.status == 'away') {
+//          alert(1);
+//        }
+//      });
 //      afk.removeListener(e.id);
-    });
-    console.log(listenerId);
+//      console.log(listenerId);
 
-  </script>
+      //-- Focus window after app start
+      angApp.bringToFront();
+    }
+  });
+</script>
 
-  </body>
+
+<datalist id="work-delay-options">
+  <select>
+    <option value="15" />
+    <option value="20" />
+    <option value="25" />
+    <option value="30" />
+    <option value="35" />
+    <option value="40" />
+    <option value="45" />
+    <option value="50" />
+    <option value="55" />
+    <option value="60" />
+    <option value="65" />
+    <option value="70" />
+    <option value="75" />
+    <option value="80" />
+    <option value="85" />
+    <option value="90" />
+    <option value="95" />
+    <option value="100" />
+    <option value="105" />
+    <option value="110" />
+    <option value="115" />
+    <option value="120" />
+  </select>
+</datalist>
+
+</body>
 </html>
