@@ -52,6 +52,20 @@
       margin: 20px auto;
     }
 
+    .credits{
+      font-size: 12px;
+      font-weight: normal;
+      font-style: italic;
+      color: silver;
+      cursor: pointer;
+    }
+
+    span.a {
+      color: #0000ff;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
     button span {
       vertical-align: middle;
     }
@@ -97,7 +111,7 @@
       </div>
     </div>
   </div>
-  <div class="panel-footer">
+  <div class="panel-footer" style="position: relative">
     <button type="button" class="btn btn-success" ng-disabled="timers.length > 9" ng-click="addTimer()">
       <span class="glyphicon glyphicon-plus-sign" aria-hidden="true"></span> <span>Add timer</span>
     </button>
@@ -107,9 +121,11 @@
     <button type="button" class="btn btn-danger"  ng-show="!appActive" ng-click="startTimers()">
       <span class="glyphicon glyphicon-circle-arrow-right" aria-hidden="true"></span> <span>Start work</span>
     </button>
-    <!--<input type="button" class="btn btn-success" value="Add timer" ng-disabled="timers.length > 9" data-ng-click="addTimer()" />-->
-    <!--<input type="button" class="btn btn-primary" value="Save settings" ng-click="saveSettings()" />-->
-    <!--<input type="button" class="btn btn-danger" value="Start timers" ng-show="!appActive" ng-click="startTimers()" />-->
+
+    <div style="position: absolute; bottom: 10px; right: 5px;" class="btn-xs">
+      <span class="label credits" ng-click="showCredits()">Credits</span>
+    </div>
+
   </div>
 </div>
 
@@ -124,9 +140,24 @@
   </div>
 </script>
 
+<script type="text/ng-template" id="credits.html">
+  <div class="panel-body">
+    <div class="panel-heading">
+      <h3 class="panel-title" style="text-align: center"><img src="icon.png"> Take Some Rest</h3>
+    </div>
+    <h5>Version 1.0</h5>
+    <h5>Homepage: <span class="a" ng-click="openLink('http://achekulaev.github.io')">achekulaev.github.io</span></h5>
+    <div>Icon made by <span class="a" ng-click="openLink('http://www.freepik.com')">Freepik</span> from <span class="a" ng-click="openLink('http://www.flaticon.com')">www.flaticon.com</span> is licensed under <span class="a" ng-click="openLink('http://creativecommons.org/licenses/by/3.0/')">CC BY 3.0</span></div>
+    <button type="button" class="btn btn-primary" ng-click="close()">
+      Close
+    </button>
+  </div>
+</script>
+
 
 <script src="jquery-1.11.0.min.js"></script>
 <script src="angular-1.3.0-beta.18/angular.min.js"></script>
+<script src="angular.audio.js"></script>
 <script src="ui-bootstrap-tpls-0.11.0.js"></script>
 <script src="kendo.all.min.js"></script>
 <script src="angular-kendo.js"></script>
@@ -138,8 +169,8 @@
     require = function() {}
   }
 
-  angular.module('takeSomeRest', ['kendo.directives', 'ui.bootstrap'])
-    .controller('myTimer', ['$scope', '$interval', '$modal', function ($scope, $interval, $modal) {
+  angular.module('takeSomeRest', ['kendo.directives', 'ui.bootstrap', 'ngAudio'])
+    .controller('myTimer', ['$scope', '$interval', '$modal', 'ngAudio', function ($scope, $interval, $modal, ngAudio) {
       $scope.appGui = require('nw.gui');
       $scope.appWindow = debug ? {} : $scope.appGui.Window.get();
 
@@ -207,6 +238,7 @@
             } else {                        // else in case of break end just
               timer.isWork = true;          // set timer state to work
               timer['breakLeft'] = timer['break'] * 60; // reset break counter for future use
+              ngAudio.play('Sounds/Hero.wav');
             }
           }
 
@@ -239,13 +271,13 @@
         var hour = min * 60;
         var hours = Math.floor(seconds/hour);
         var leftover = seconds - (hours * hour);
-        return (hours > 0 ? $scope.leadZero(hours) + ':' : '')
-          + $scope.leadZero(Math.floor(leftover/min)) + ':'
-          + $scope.leadZero(Math.floor(leftover%min));
+        return (hours > 0 ? $scope.formatLeadZero(hours) + ':' : '')
+          + $scope.formatLeadZero(Math.floor(leftover/min)) + ':'
+          + $scope.formatLeadZero(Math.floor(leftover%min));
       };
 
-      $scope.leadZero = function(intVal) {
-        return intVal > 10 ? intVal : '0' + intVal;
+      $scope.formatLeadZero = function(intVal) {
+        return intVal < 10 ? '0' + intVal : intVal;
       };
 
       $scope.getProgress = function(timer) {
@@ -263,7 +295,7 @@
 
         var modalInstance = $modal.open({
           templateUrl: 'myModalContent.html',
-          controller: ModalInstanceCtrl,
+          controller: PostponeModalCtrl,
           resolve: {
             autoPostponeTimer: function() {
               return AUTO_POSTPONE_DELAY;
@@ -272,17 +304,34 @@
         });
         $scope.bringToFront();
 
+        var autoTimer = setTimeout(function() {
+          modalInstance.dismiss();
+        }, AUTO_POSTPONE_DELAY + 1000);
+
         modalInstance.result.then(function() {
           //                                      If user takes break
+          clearTimeout(autoTimer);                //
           timer.isWork = false;                   // set timer state to break
           $scope.isWork = false;                  // set App state to break
           timer['workLeft'] = timer['work'] * 60; // reset timer work counter
           $scope.appActive = true;                // resume app execution
-        }, function() {
-          //                                      If user postpones dont change states
+        }, function(reason) {
+          //                                      If user does not take break, don't change states
+          clearTimeout(autoTimer);                //
           timer['workLeft'] = 60;                 // give him one more minute
           $scope.appActive = true;                // resume app execution
         });
+      };
+
+      $scope.showCredits = function() {
+        $modal.open({
+          templateUrl: 'credits.html',
+          controller: CreditsModalCtrl
+        });
+      };
+
+      $scope.openLink = function(link) {
+        $scope.appGui.Shell.openExternal(link);
       };
 
       $scope.bringToFront = function() {
@@ -292,91 +341,109 @@
 
     }]);
 
-  //-- Modal Controller
-  var ModalInstanceCtrl = ['$scope', '$modalInstance', 'autoPostponeTimer', function($scope, $modalInstance, autoPostponeTimer) {
+  //-- Postpone Modal Controller
+  var PostponeModalCtrl = ['$scope', '$modalInstance', 'autoPostponeTimer', function($scope, $modalInstance, autoPostponeTimer) {
     $scope.autoPostponeTimer = autoPostponeTimer;
 
-    $scope.autoInterval = setInterval(function() {
-      $scope.autoPostponeTimer -= 1000;
+    var countDown = setInterval(function() {
+      if ($modalInstance.result.$$pending != null && $scope.autoPostponeTimer > 0) {
+        $scope.autoPostponeTimer -= 1000;
+      } else {
+        clearInterval(countDown);
+      }
     }, 1000);
 
-    $scope.autoTimer = setTimeout(function() {
-      $scope.postpone();
-    }, $scope.autoPostponeTimer + 1000);
-
-
     $scope.takeBreak = function() {
-      clearTimeout($scope.autoTimer);
-      clearInterval($scope.autoInterval)
+      clearInterval(countDown);
       $modalInstance.close();
     };
     $scope.postpone = function() {
-      clearTimeout($scope.autoTimer);
-      clearInterval($scope.autoInterval)
-      $modalInstance.dismiss('not just yet!');
+      clearInterval(countDown);
+      $modalInstance.dismiss('user postponed');
     }
+  }];
+
+  //-- Credits Modal Controller
+  var CreditsModalCtrl = ['$scope', '$modalInstance', function($scope, $modalInstance) {
+    $scope.openLink = function(link) {
+      angular.element(jQuery('body')).scope().openLink(link);
+    };
+
+    $scope.close = function() {
+      $modalInstance.close();
+    };
   }];
 
 
   jQuery(function() {
-    if (!debug) {
-      var angApp = angular.element(jQuery('body')).scope();
-      var gui = angApp.appGui;
-      var win = angApp.appWindow;
+    if (debug) { return; } // don't run node-webkit related stuff when tested in browser
 
-      //-- Window
-      win.on('close', function(event) {
-        if (event == 'quit') { //Cmd-q pressed
-          gui.App.quit();
-        } else {
-          this.hide();
-        }
-      });
+    var angApp = angular.element(jQuery('body')).scope();
+    var gui = angApp.appGui;
+    var win = angApp.appWindow;
 
-      //-- Main menu
-      var mb = new gui.Menu({ type : "menubar" });
-      mb.createMacBuiltin("Take Some Rest");
-      win.menu = mb;
+    //-- Prevent Exception that would nake app unusable
+    process.on("uncaughtException", function(err) {
+      console.log("Exception: ", err);
+    });
 
-      //-- Tray menu
-      var tray = new gui.Tray({ icon: 'alticon.png' });
-      tray.alticon = 'icon.png';
+    //-- Prevent loading external page that would make app unusable
+    window.onbeforeunload = function() {
+      gui.App.quit();
+    };
 
-      var menu = new gui.Menu();
-      var trayMenu = [
-        {
-          label: 'Take Some Rest',
-          click: function() { angApp.bringToFront(); }
-        },
-        { type: 'separator' },
-        {
-          label: 'Show',
-          click: function() { angApp.bringToFront(); }
-        },
-        {
-          label: 'Quit',
-          click: function() { gui.App.quit(); }
-        }
-      ];
-
-      for (var i = 0; i < trayMenu.length; i++) {
-        var item = trayMenu[i];
-        if (item.type == 'separator') {
-          menu.append(new gui.MenuItem({ type: 'separator' }));
-        } else {
-          menu.append(new gui.MenuItem({
-            label: item.label,
-            click: item.click
-          }));
-        }
-
+    //-- Handle Cmd-Q as quit and Close button as hide
+    win.on('close', function(event) {
+      if (event == 'quit') { //Cmd-q pressed
+        gui.App.quit();
+      } else {
+        this.hide();
       }
+    });
 
-      tray.menu = menu;
+    //-- Main menu
+    var mb = new gui.Menu({ type : "menubar" });
+    mb.createMacBuiltin("Take Some Rest");
+    win.menu = mb;
 
-      //-- User activity handler
-      var afk = require('afk');
-      var seconds = 5;
+    //-- Tray menu
+    var tray = new gui.Tray({ icon: 'alticon.png' });
+    tray.alticon = 'icon.png';
+
+    var menu = new gui.Menu();
+    var trayMenu = [
+      {
+        label: 'Take Some Rest',
+        click: function() { angApp.bringToFront(); }
+      },
+      { type: 'separator' },
+      {
+        label: 'Show',
+        click: function() { angApp.bringToFront(); }
+      },
+      {
+        label: 'Quit',
+        click: function() { gui.App.quit(); }
+      }
+    ];
+
+    for (var i = 0; i < trayMenu.length; i++) {
+      var item = trayMenu[i];
+      if (item.type == 'separator') {
+        menu.append(new gui.MenuItem({ type: 'separator' }));
+      } else {
+        menu.append(new gui.MenuItem({
+          label: item.label,
+          click: item.click
+        }));
+      }
+    }
+
+    tray.menu = menu;
+
+    //-- User activity handler
+    var afk = require('afk');
+    var seconds = 5;
 
 //      var listenerId = afk.addListener(seconds, function(e) {
 //        if (e.status == 'away') {
@@ -386,9 +453,9 @@
 //      afk.removeListener(e.id);
 //      console.log(listenerId);
 
-      //-- Focus window after app start
-      angApp.bringToFront();
-    }
+    //-- Focus window after app start
+    angApp.bringToFront();
+
   });
 </script>
 
